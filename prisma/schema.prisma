@@ -1,0 +1,105 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Switched to SQLite for easy local development. Connection URL
+  // has been moved to prisma.config.ts per newer Prisma requirements.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Ambientes {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  Maquinas           Maquinas[]
+  SessoesVerificacao SessaoVerificacao[]
+}
+
+model Maquinas {
+  id          Int            @id @default(autoincrement())
+  name        String
+  ambienteId  Int
+  ip          String?        @unique
+  mac         String?        @unique
+  patrimonio  String?        @unique
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  ambiente    Ambientes      @relation(fields: [ambienteId], references: [id])
+  Verificacao Verificacoes[]
+
+  @@index([ip])
+}
+
+model User {
+  id                 Int                 @id @default(autoincrement())
+  name               String
+  matricula          Int?                @unique
+  email              String?             @unique
+  password           String
+  role               String              @default("tecnico") // "admin" ou "tecnico"
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  Verificacao        Verificacoes[]
+  SessoesVerificacao SessaoVerificacao[]
+  Notificacoes       Notificacao[]
+}
+
+model SessaoVerificacao {
+  id          Int            @id @default(autoincrement())
+  ambienteId  Int
+  userId      Int
+  status      String         @default("iniciada") // iniciada, em_andamento, finalizada
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  finalizadaEm DateTime?
+  ambiente    Ambientes      @relation(fields: [ambienteId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
+  verificacoes Verificacoes[]
+}
+
+model Verificacoes {
+  id                 Int                @id @default(autoincrement())
+  maquinaId          Int
+  userId             Int
+  sessaoVerificacaoId Int?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  mouse              String?            @default("OK")
+  teclado            String?            @default("OK")
+  monitor            String?            @default("OK")
+  cabos              String?            @default("OK")
+  observacao         String?
+  maquina            Maquinas           @relation(fields: [maquinaId], references: [id])
+  user               User               @relation(fields: [userId], references: [id])
+  sessaoVerificacao  SessaoVerificacao? @relation(fields: [sessaoVerificacaoId], references: [id])
+  VerificacaoFoto    VerificacaoFoto[]
+  Notificacoes       Notificacao[]
+}
+
+model VerificacaoFoto {
+  id            Int          @id @default(autoincrement())
+  verificacaoId Int
+  url           String       // Armazena o caminho da imagem
+  verificacao   Verificacoes @relation(fields: [verificacaoId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([verificacaoId])
+}
+
+model Notificacao {
+  id            Int          @id @default(autoincrement())
+  titulo        String
+  mensagem      String
+  lida          Boolean      @default(false)
+  verificacaoId Int?
+  userId        Int
+  createdAt     DateTime     @default(now())
+  verificacao   Verificacoes? @relation(fields: [verificacaoId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+}
