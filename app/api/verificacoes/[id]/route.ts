@@ -3,6 +3,14 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "../../auth/[...nextauth]/route"
 
+function normalizePhotoUrl(url: string): string {
+  if (!url) return url
+  if (url.startsWith("/api/verificacoes/fotos/")) return url
+  const parts = url.split("/")
+  const filename = parts[parts.length - 1]
+  return `/api/verificacoes/fotos/${filename}`
+}
+
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions)
@@ -34,7 +42,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ message: "Verificação não encontrada" }, { status: 404 })
     }
 
-    return NextResponse.json(verificacao)
+    const verificacaoFormatada = {
+      ...verificacao,
+      VerificacaoFoto: verificacao.VerificacaoFoto.map((foto) => ({
+        ...foto,
+        url: normalizePhotoUrl(foto.url),
+      })),
+    }
+
+    return NextResponse.json(verificacaoFormatada)
   } catch (error) {
     console.error("Erro ao buscar verificação:", error)
     return NextResponse.json({ message: "Erro interno do servidor" }, { status: 500 })
